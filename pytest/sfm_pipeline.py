@@ -43,7 +43,7 @@ import time
 
 import pytheia as pt
 
-min_num_inlier_matches = 100
+min_num_inlier_matches = 50
 
 def remove_prefix_and_suffix(image_file):
     pos = image_file.rfind('/')+1
@@ -104,7 +104,7 @@ def match_image_pair(recon, track_builder, features, vid1, vid2, matchertype):
         # Apply ratio test
         filtered_matches = []
         for m,n in matches:
-            if m.distance < 0.8*n.distance:
+            if m.distance < 0.85*n.distance:
                 filtered_matches.append(m)
 
     elif matchertype == "gms":
@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
     view_graph = pt.sfm.ViewGraph()
     recon = pt.sfm.Reconstruction()
-    track_builder = pt.sfm.TrackBuilder(3, 30)
+    track_builder = pt.sfm.TrackBuilder(3, 50)
 
     prior = pt.sfm.CameraIntrinsicsPrior()
     scaler = args.img_downscale_factor
@@ -204,12 +204,12 @@ if __name__ == "__main__":
     prior.tangential_distortion.value = [0, 0]
     prior.skew.value = [0]
     prior.image_width = int(3072*scaler)
-    prior.image_height = int(2304*scaler)
+    prior.image_height = int(2048*scaler)
     # 'PINHOLE_RADIAL_TANGENTIAL', 'DIVISION_UNDISTORTION', 'DOUBLE_SPHERE', 'FOV', 'EXTENDED_UNIFIED', 'FISHEYE
     prior.camera_intrinsics_model_type = 'PINHOLE' 
 
     # opencv extraction of features from images
-    images_files = glob.glob(os.path.join(args.image_path,'*.JPG'))
+    images_files = glob.glob(os.path.join(args.image_path,'*.png'))
     image_names = []
     for image_file in images_files:
         image_names.append(remove_prefix_and_suffix(image_file))
@@ -222,39 +222,78 @@ if __name__ == "__main__":
         v = recon.MutableView(view_id)
         v.SetCameraIntrinsicsPrior(prior)
 
-    features = {}
-    num_images = len(images_files)
-    for i in range(num_images):
-        kpts, desc, view_id, img = extract_features(images_files[i], None, featuretype, recon, scaler)
-        features[view_id] = {"keypoints" : kpts, "descriptors" : desc, "img": img, "img_wh": img.shape[:2][::-1]}
-        print("Extracted {} features from {}".format(len(kpts), images_files[i]))
+    # features = {}
+    # num_images = len(images_files)
+    # for i in range(num_images):
+    #     kpts, desc, view_id, img = extract_features(images_files[i], None, featuretype, recon, scaler)
+    #     features[view_id] = {"keypoints" : kpts, "descriptors" : desc, "img": img, "img_wh": img.shape[:2][::-1]}
+    #     print("Extracted {} features from {}".format(len(kpts), images_files[i]))
+    #
+    # view_ids = recon.ViewIds()
+    # for i in range(len(view_ids)):
+    #     for j in range(i+1,len(view_ids)):
+    #         view_id1 = view_ids[i]
+    #         view_id2 = view_ids[j]
+    #         success, two_view_info, correspondences_verified = match_image_pair(
+    #             recon, track_builder, features, view_id1, view_id2, matchertype)
+    # 
+    #         if success == True:
+    #             if args.debug:
+    #                 img1 = features[view_id1]["img"]
+    #                 img2 = features[view_id2]["img"]
+    #                 images = np.concatenate([img1,img2],1)
+    #                 images = cv2.cvtColor(images, cv2.COLOR_GRAY2BGR)
+    #                 for cor in correspondences_verified:
+    #                     pt1 = (int(cor.feature1.point[0]), int(cor.feature1.point[1]))
+    #                     pt2 = (int(cor.feature2.point[0]+img2.shape[1]), int(cor.feature2.point[1]))
+    #                     images=cv2.line(images, pt1, pt2, (255,0,0), 1)
+    #                 images = cv2.resize(images, (2*640,480))
+    #                 cv2.imshow("matches", images)
+    #                 cv2.waitKey(1)
+    #             view_graph.AddEdge(view_id1, view_id2, two_view_info)
+    #
+    #             print("Match between view {} and view {}. ".format(view_id1, view_id2))
+    #         else:
+    #             print("No match between view {} and view {}.\n\n ".format(view_id1, view_id2))
 
     view_ids = recon.ViewIds()
+    
     for i in range(len(view_ids)):
-        for j in range(i+1,len(view_ids)):
+        for j in range(i+1, len(view_ids)):
             view_id1 = view_ids[i]
             view_id2 = view_ids[j]
-            success, two_view_info, correspondences_verified = match_image_pair(
-                recon, track_builder, features, view_id1, view_id2, matchertype)
- 
-            if success == True:
-                if args.debug:
-                    img1 = features[view_id1]["img"]
-                    img2 = features[view_id2]["img"]
-                    images = np.concatenate([img1,img2],1)
-                    images = cv2.cvtColor(images, cv2.COLOR_GRAY2BGR)
-                    for cor in correspondences_verified:
-                        pt1 = (int(cor.feature1.point[0]), int(cor.feature1.point[1]))
-                        pt2 = (int(cor.feature2.point[0]+img2.shape[1]), int(cor.feature2.point[1]))
-                        images=cv2.line(images, pt1, pt2, (255,0,0), 1)
-                    images = cv2.resize(images, (2*640,480))
-                    cv2.imshow("matches", images)
-                    cv2.waitKey(1)
-                view_graph.AddEdge(view_id1, view_id2, two_view_info)
 
-                print("Match between view {} and view {}. ".format(view_id1, view_id2))
-            else:
-                print("No match between view {} and view {}.\n\n ".format(view_id1, view_id2))
+            filename_matchings = f"000{i}.png-000{j}.png.txt"
+            matchings_path = args.image_path + filename_matchings
+            matchingsnp = np.loadtxt(matchings_path)
+
+            filename_kpts1 = f"000{i}.png.txt"
+            filename_kpts2 = f"000{j}.png.txt"
+
+            featuresnp1 = np.loadtxt(args.image_path + filename_kpts1)
+            featuresnp2 = np.loadtxt(args.image_path + filename_kpts2)
+
+            correspondences = []
+            for row in matchingsnp:
+                feature1 = pt.sfm.Feature(featuresnp1[int(row[0])])
+                feature2 = pt.sfm.Feature(featuresnp2[int(row[1])])
+                correspondences.append(pt.matching.FeatureCorrespondence(feature1, feature2))
+                track_builder.AddFeatureCorrespondence(view_id1, feature1, 
+                                                       view_id2, feature2)
+
+
+            options = pt.sfm.EstimateTwoViewInfoOptions()
+            options.max_sampson_error_pixels = 1.0
+            options.max_ransac_iterations = 250
+            options.ransac_type = pt.sfm.RansacType(0)
+
+            prior1 = recon.View(view_id1).Camera().CameraIntrinsicsPriorFromIntrinsics()
+            prior2 = recon.View(view_id2).Camera().CameraIntrinsicsPriorFromIntrinsics()
+            success, two_view_info, inlier_indices = pt.sfm.EstimateTwoViewInfo(options, prior1, prior2, correspondences)
+            if success == False:
+                print("Could not estimate two view info for view {} and view {}".format(view_id1, view_id2))
+            view_graph.AddEdge(view_id1, view_id2, two_view_info)
+
     
     # make sure all data is set
     pt.sfm.SetCameraIntrinsicsFromPriors(recon)
@@ -262,8 +301,8 @@ if __name__ == "__main__":
     print('{} edges were added to the view graph.'.format(view_graph.NumEdges))
     track_builder.BuildTracks(recon)
     options = pt.sfm.ReconstructionEstimatorOptions()
-    options.num_threads = 7
-    options.rotation_filtering_max_difference_degrees = 15.0
+    options.num_threads = 4
+    options.rotation_filtering_max_difference_degrees = 30.0
     options.bundle_adjustment_robust_loss_width = 3.0
     options.bundle_adjustment_loss_function_type = pt.sfm.LossFunctionType(1)
     options.subsample_tracks_for_bundle_adjustment = False
@@ -271,6 +310,7 @@ if __name__ == "__main__":
     options.intrinsics_to_optimize = pt.sfm.OptimizeIntrinsicsType.NONE
     options.min_triangulation_angle_degrees = 2.0
     options.triangulation_method = pt.sfm.TriangulationMethodType(0)
+    options.max_reprojection_error_in_pixels = 2000000000.0
     if reconstructiontype == 'global':
         options.global_position_estimator_type = pt.sfm.GlobalPositionEstimatorType.LEAST_UNSQUARED_DEVIATION
         options.global_rotation_estimator_type = pt.sfm.GlobalRotationEstimatorType.ROBUST_L1L2  
