@@ -220,7 +220,11 @@ if __name__ == "__main__":
     for i, image_name in enumerate(image_names):
         view_id = recon.AddView(image_name, 0, i)
         v = recon.MutableView(view_id)
+        v.Camera().SetFromCameraIntrinsicsPriors(prior)
+        # print(v.Camera().CameraIntrinsicsPriorFromIntrinsics().focal_length.value)
+            # prior1 = recon.View(view_id1).Camera().CameraIntrinsicsPriorFromIntrinsics()
         v.SetCameraIntrinsicsPrior(prior)
+        # print(v.Camera().CameraIntrinsicsPriorFromIntrinsics().focal_length.value)
 
     # features = {}
     # num_images = len(images_files)
@@ -289,6 +293,7 @@ if __name__ == "__main__":
 
             prior1 = recon.View(view_id1).Camera().CameraIntrinsicsPriorFromIntrinsics()
             prior2 = recon.View(view_id2).Camera().CameraIntrinsicsPriorFromIntrinsics()
+            # print(prior1.focal_length.value)
             success, two_view_info, inlier_indices = pt.sfm.EstimateTwoViewInfo(options, prior1, prior2, correspondences)
             if success == False:
                 print("Could not estimate two view info for view {} and view {}".format(view_id1, view_id2))
@@ -302,7 +307,7 @@ if __name__ == "__main__":
     track_builder.BuildTracks(recon)
     options = pt.sfm.ReconstructionEstimatorOptions()
     options.num_threads = 4
-    options.rotation_filtering_max_difference_degrees = 30.0
+    options.rotation_filtering_max_difference_degrees = 15.0
     options.bundle_adjustment_robust_loss_width = 3.0
     options.bundle_adjustment_loss_function_type = pt.sfm.LossFunctionType(1)
     options.subsample_tracks_for_bundle_adjustment = False
@@ -310,7 +315,7 @@ if __name__ == "__main__":
     options.intrinsics_to_optimize = pt.sfm.OptimizeIntrinsicsType.NONE
     options.min_triangulation_angle_degrees = 2.0
     options.triangulation_method = pt.sfm.TriangulationMethodType(0)
-    options.max_reprojection_error_in_pixels = 2000000000.0
+    # options.max_reprojection_error_in_pixels = 1.0
     if reconstructiontype == 'global':
         options.global_position_estimator_type = pt.sfm.GlobalPositionEstimatorType.LEAST_UNSQUARED_DEVIATION
         options.global_rotation_estimator_type = pt.sfm.GlobalRotationEstimatorType.ROBUST_L1L2  
