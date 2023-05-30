@@ -221,9 +221,11 @@ if __name__ == "__main__":
         view_id = recon.AddView(image_name, 0, i)
         v = recon.MutableView(view_id)
         v.Camera().SetFromCameraIntrinsicsPriors(prior)
-        # print(v.Camera().CameraIntrinsicsPriorFromIntrinsics().focal_length.value)
+        print(v.Camera().CameraIntrinsicsPriorFromIntrinsics().image_size[0])
+        print(v.Camera().CameraIntrinsicsPriorFromIntrinsics().focal_length.value)
             # prior1 = recon.View(view_id1).Camera().CameraIntrinsicsPriorFromIntrinsics()
         v.SetCameraIntrinsicsPrior(prior)
+        exit(0)
         # print(v.Camera().CameraIntrinsicsPriorFromIntrinsics().focal_length.value)
 
     # features = {}
@@ -240,7 +242,7 @@ if __name__ == "__main__":
     #         view_id2 = view_ids[j]
     #         success, two_view_info, correspondences_verified = match_image_pair(
     #             recon, track_builder, features, view_id1, view_id2, matchertype)
-    # 
+    #
     #         if success == True:
     #             if args.debug:
     #                 img1 = features[view_id1]["img"]
@@ -260,23 +262,24 @@ if __name__ == "__main__":
     #         else:
     #             print("No match between view {} and view {}.\n\n ".format(view_id1, view_id2))
 
+    # read keypoints from file
     view_ids = recon.ViewIds()
     
     for i in range(len(view_ids)):
         for j in range(i+1, len(view_ids)):
             view_id1 = view_ids[i]
             view_id2 = view_ids[j]
-
+    
             filename_matchings = f"000{i}.png-000{j}.png.txt"
             matchings_path = args.image_path + filename_matchings
             matchingsnp = np.loadtxt(matchings_path)
-
+    
             filename_kpts1 = f"000{i}.png.txt"
             filename_kpts2 = f"000{j}.png.txt"
-
+    
             featuresnp1 = np.loadtxt(args.image_path + filename_kpts1)
             featuresnp2 = np.loadtxt(args.image_path + filename_kpts2)
-
+    
             correspondences = []
             for row in matchingsnp:
                 feature1 = pt.sfm.Feature(featuresnp1[int(row[0])])
@@ -284,13 +287,13 @@ if __name__ == "__main__":
                 correspondences.append(pt.matching.FeatureCorrespondence(feature1, feature2))
                 track_builder.AddFeatureCorrespondence(view_id1, feature1, 
                                                        view_id2, feature2)
-
-
+    
+    
             options = pt.sfm.EstimateTwoViewInfoOptions()
             options.max_sampson_error_pixels = 1.0
             options.max_ransac_iterations = 250
             options.ransac_type = pt.sfm.RansacType(0)
-
+    
             prior1 = recon.View(view_id1).Camera().CameraIntrinsicsPriorFromIntrinsics()
             prior2 = recon.View(view_id2).Camera().CameraIntrinsicsPriorFromIntrinsics()
             # print(prior1.focal_length.value)
@@ -307,7 +310,7 @@ if __name__ == "__main__":
     track_builder.BuildTracks(recon)
     options = pt.sfm.ReconstructionEstimatorOptions()
     options.num_threads = 4
-    options.rotation_filtering_max_difference_degrees = 15.0
+    options.rotation_filtering_max_difference_degrees = 5.0
     options.bundle_adjustment_robust_loss_width = 3.0
     options.bundle_adjustment_loss_function_type = pt.sfm.LossFunctionType(1)
     options.subsample_tracks_for_bundle_adjustment = False
@@ -315,7 +318,10 @@ if __name__ == "__main__":
     options.intrinsics_to_optimize = pt.sfm.OptimizeIntrinsicsType.NONE
     options.min_triangulation_angle_degrees = 2.0
     options.triangulation_method = pt.sfm.TriangulationMethodType(0)
-    # options.max_reprojection_error_in_pixels = 1.0
+    options.max_reprojection_error_in_pixels = 10
+    options.num_retriangulation_iterations = 15
+    # options.refine_camera_positions_and_points_after_position_estimation = True
+    opts = pt.sfm.BundleAdjustmentOptions()
     if reconstructiontype == 'global':
         options.global_position_estimator_type = pt.sfm.GlobalPositionEstimatorType.LEAST_UNSQUARED_DEVIATION
         options.global_rotation_estimator_type = pt.sfm.GlobalRotationEstimatorType.ROBUST_L1L2  
