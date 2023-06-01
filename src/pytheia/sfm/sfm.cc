@@ -750,7 +750,9 @@ void pytheia_sfm_classes(py::module& m) {
                      &theia::EstimateTwoViewInfoOptions::min_ransac_iterations)
       .def_readwrite("max_ransac_iterations",
                      &theia::EstimateTwoViewInfoOptions::max_ransac_iterations)
-      .def_readwrite("use_mle", &theia::EstimateTwoViewInfoOptions::use_mle);
+      .def_readwrite("use_mle", &theia::EstimateTwoViewInfoOptions::use_mle)
+      .def_readwrite("use_lo", &theia::EstimateTwoViewInfoOptions::use_lo)
+      .def_readwrite("lo_start_iterations", &theia::EstimateTwoViewInfoOptions::lo_start_iterations);
 
   py::class_<theia::FilterViewPairsFromRelativeTranslationOptions>(
       m, "FilterViewPairsFromRelativeTranslationOptions")
@@ -842,7 +844,12 @@ void pytheia_sfm_classes(py::module& m) {
       .def("GetPositionPriorSqrtInformation",
            &theia::View::GetPositionPriorSqrtInformation)
       .def("SetPositionPrior", &theia::View::SetPositionPrior)
-      .def("HasPositionPrior", &theia::View::HasPositionPrior);
+      .def("HasPositionPrior", &theia::View::HasPositionPrior)
+      .def("GetGravityPrior", &theia::View::GetGravityPrior)
+      .def("GetGravityPriorSqrtInformation",
+           &theia::View::GetGravityPriorSqrtInformation)
+      .def("SetGravityPrior", &theia::View::SetGravityPrior)
+      .def("HasGravityPrior", &theia::View::HasGravityPrior);
 
   // Visibility pyramid
   py::class_<theia::VisibilityPyramid>(m, "VisibilityPyramid")
@@ -971,9 +978,13 @@ void pytheia_sfm_classes(py::module& m) {
       .def_readwrite("max_trust_region_radius",
                      &theia::BundleAdjustmentOptions::max_trust_region_radius)
       .def_readwrite("use_position_priors",
-                     &theia::BundleAdjustmentOptions::use_position_priors)
+                     &theia::BundleAdjustmentOptions::use_position_priors)      
+      .def_readwrite("use_gravity_priors",
+                     &theia::BundleAdjustmentOptions::use_gravity_priors)
       .def_readwrite("orthographic_camera",
-                     &theia::BundleAdjustmentOptions::orthographic_camera);
+                     &theia::BundleAdjustmentOptions::orthographic_camera)
+      .def_readwrite("use_homogeneous_point_parametrization",
+                     &theia::BundleAdjustmentOptions::use_homogeneous_point_parametrization);
 
   // Reconstruction Options
   py::enum_<theia::TriangulationMethodType>(m, "TriangulationMethodType")
